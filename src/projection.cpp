@@ -47,7 +47,7 @@ namespace mapnik {
 
 projection::projection(std::string const& params, bool defer_proj_init)
     : params_(params),
-      defer_proj_init_(defer_proj_init),
+      defer_proj_init_(false),
       is_geographic_(false),
       proj_(nullptr),
       proj_ctx_(nullptr)
@@ -69,7 +69,7 @@ projection::projection(std::string const& params, bool defer_proj_init)
 
 projection::projection(projection const& rhs)
     : params_(rhs.params_),
-      defer_proj_init_(rhs.defer_proj_init_),
+      defer_proj_init_(false),
       is_geographic_(rhs.is_geographic_),
       proj_(nullptr),
       proj_ctx_(nullptr)
@@ -234,7 +234,7 @@ std::string projection::expanded() const
 void projection::swap(projection& rhs)
 {
     std::swap(params_,rhs.params_);
-    std::swap(defer_proj_init_,rhs.defer_proj_init_);
+    std::swap(defer_proj_init_,false);
     std::swap(is_geographic_,rhs.is_geographic_);
 }
 
