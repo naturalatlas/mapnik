@@ -31,13 +31,15 @@
 #ifdef MAPNIK_USE_PROJ4
 // proj4
 #include <proj_api.h>
- #if defined(MAPNIK_THREADSAFE) && PJ_VERSION < 480
+ #if defined(MAPNIK_THREADSAFE)
     #include <mutex>
     static std::mutex mutex_;
-    #ifdef _MSC_VER
-     #pragma NOTE(mapnik is building against < proj 4.8, reprojection will be faster if you use >= 4.8)
-    #else
-     #warning mapnik is building against < proj 4.8, reprojection will be faster if you use >= 4.8
+    #if PJ_VERSION < 480
+        #ifdef _MSC_VER
+         #pragma NOTE(mapnik is building against < proj 4.8, reprojection will be faster if you use >= 4.8)
+        #else
+         #warning mapnik is building against < proj 4.8, reprojection will be faster if you use >= 4.8
+        #endif
     #endif
  #endif
 #endif
@@ -102,6 +104,9 @@ void projection::init_proj4() const
 #ifdef MAPNIK_USE_PROJ4
     if (!proj_)
     {
+        #if defined(MAPNIK_THREADSAFE)
+        std::lock_guard<std::mutex> lock(mutex_);
+        #endif
 #if PJ_VERSION >= 480
         proj_ctx_ = pj_ctx_alloc();
         proj_ = pj_init_plus_ctx(proj_ctx_, params_.c_str());
@@ -118,9 +123,6 @@ void projection::init_proj4() const
             throw proj_init_error(params_);
         }
 #else
-        #if defined(MAPNIK_THREADSAFE)
-        std::lock_guard<std::mutex> lock(mutex_);
-        #endif
         proj_ = pj_init_plus(params_.c_str());
         if (!proj_) throw proj_init_error(params_);
 #endif
