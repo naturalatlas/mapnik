@@ -234,7 +234,7 @@ std::string projection::expanded() const
 void projection::swap(projection& rhs)
 {
     std::swap(params_,rhs.params_);
-    std::swap(defer_proj_init_,false);
+    std::swap(defer_proj_init_,rhs.defer_proj_init_);
     std::swap(is_geographic_,rhs.is_geographic_);
 }
 
