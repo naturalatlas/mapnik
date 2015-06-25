@@ -60,8 +60,8 @@ public:
     mapnik::projection const& dest() const;
 
 private:
-    projection const& source_;
-    projection const& dest_;
+    projection source_;
+    projection dest_;
     bool is_source_longlat_;
     bool is_dest_longlat_;
     bool is_source_equal_dest_;
