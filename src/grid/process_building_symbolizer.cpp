@@ -84,13 +84,13 @@ void grid_renderer<T>::process(building_symbolizer const& sym,
         },
         [&](path_type const& frame)
         {
-            vertex_adapter va(frame);
-            transform_path_type path(common_.t_,va,prj_trans);
-            agg::conv_stroke<transform_path_type> stroke(path);
-            ras_ptr->add_path(stroke);
-            ren.color(color_type(feature.id()));
-            agg::render_scanlines(*ras_ptr, sl, ren);
-            ras_ptr->reset();
+            // vertex_adapter va(frame);
+            // transform_path_type path(common_.t_,va,prj_trans);
+            // agg::conv_stroke<transform_path_type> stroke(path);
+            // ras_ptr->add_path(stroke);
+            // ren.color(color_type(feature.id()));
+            // agg::render_scanlines(*ras_ptr, sl, ren);
+            // ras_ptr->reset();
         },
         [&](path_type const& roof)
         {

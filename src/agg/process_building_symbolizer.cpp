@@ -103,6 +103,7 @@ void agg_renderer<T0,T1>::process(building_symbolizer const& sym,
             transform_path_type path(common_.t_,va, prj_trans);
             agg::conv_stroke<transform_path_type> stroke(path);
             stroke.width(common_.scale_factor_);
+            stroke.line_join(agg::round_join);
             ras_ptr->add_path(stroke);
             ren.color(agg::rgba8_pre(int(r*0.8), int(g*0.8), int(b*0.8), int(a * opacity)));
             agg::render_scanlines(*ras_ptr, sl, ren);
