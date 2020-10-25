@@ -101,6 +101,7 @@ void agg_renderer<T0,T1>::process(building_symbolizer const& sym,
             agg::conv_stroke<vertex_adapter> stroke(va);
             stroke.width(common_.scale_factor_);
             stroke.miter_limit(common_.scale_factor_ / 2.0);
+            stroke.line_join(agg::round_join);
             ras_ptr->add_path(stroke);
             ren.color(agg::rgba8_pre(int(r*0.8), int(g*0.8), int(b*0.8), int(a * opacity)));
             agg::render_scanlines(*ras_ptr, sl, ren);

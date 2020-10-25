@@ -68,6 +68,7 @@ void cairo_renderer<T>::process(building_symbolizer const& sym,
                               fill.blue() * 0.8 / 255.0, fill.alpha() * opacity / 255.0);
             context_.set_line_width(common_.scale_factor_);
             context_.set_miter_limit(common_.scale_factor_ / 2.0);
+            context_.set_line_join(ROUND_JOIN);
             context_.add_path(va);
             context_.stroke();
         },

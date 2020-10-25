@@ -81,13 +81,13 @@ void grid_renderer<T>::process(building_symbolizer const& sym,
         },
         [&](path_type const& frame)
         {
-            vertex_adapter va(frame);
-            agg::conv_stroke<vertex_adapter> stroke(va);
-            stroke.miter_limit(common_.scale_factor_ / 2.0);
-            ras_ptr->add_path(stroke);
-            ren.color(color_type(feature.id()));
-            agg::render_scanlines(*ras_ptr, sl, ren);
-            ras_ptr->reset();
+            // vertex_adapter va(frame);
+            // agg::conv_stroke<vertex_adapter> stroke(va);
+            // stroke.miter_limit(common_.scale_factor_ / 2.0);
+            // ras_ptr->add_path(stroke);
+            // ren.color(color_type(feature.id()));
+            // agg::render_scanlines(*ras_ptr, sl, ren);
+            // ras_ptr->reset();
         },
         [&](render_building_symbolizer::roof_type & roof)
         {
