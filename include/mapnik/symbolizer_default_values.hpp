@@ -311,6 +311,13 @@ struct symbolizer_default<halo_rasterizer_enum, keys::halo_rasterizer>
     static halo_rasterizer_enum value() { return HALO_RASTERIZER_FULL; }
 };
 
+// halo-bgsmooth-group
+template <>
+struct symbolizer_default<halo_bgsmooth_group_enum, keys::halo_bgsmooth_group>
+{
+    static halo_bgsmooth_group_enum value() { return HALO_BGSMOOTH_GROUP_CHARACTER; }
+};
+
 // text-placements
 
 // placement (point-placement-type FIXME)

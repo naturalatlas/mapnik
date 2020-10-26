@@ -96,6 +96,7 @@ static const property_meta_type key_meta[const_max_key] =
                             return *scaling_method_to_string(scaling_method_e(e.value));
                         },
                         property_types::target_scaling_method},
+
     property_meta_type{ "filter-factor",  nullptr, property_types::target_double },
     property_meta_type{ "mesh-size", nullptr, property_types::target_double },
     property_meta_type{ "premultiplied",  nullptr, property_types::target_bool },
@@ -117,9 +118,6 @@ static const property_meta_type key_meta[const_max_key] =
                             return enumeration<halo_rasterizer_enum,halo_rasterizer_enum_MAX>(halo_rasterizer_enum(e.value)).as_string();
                         },
                         property_types::target_halo_rasterizer },
-    property_meta_type{ "halo-bgsmooth-group", [](enumeration_wrapper e)
-                        {return enumeration<halo_bgsmooth_group_enum,halo_bgsmooth_group_enum_MAX>(halo_bgsmooth_group_enum(e.value)).as_string();},
-                        property_types::target_halo_bgsmooth_group},
     property_meta_type{ "text-placements", nullptr, property_types::target_double },
     property_meta_type{ "placement",
                         [](enumeration_wrapper e)
@@ -175,6 +173,9 @@ static const property_meta_type key_meta[const_max_key] =
                         {return enumeration<line_pattern_enum,line_pattern_enum_MAX>(line_pattern_enum(e.value)).as_string();},
                         property_types::target_line_pattern},
 
+    property_meta_type{ "halo-bgsmooth-group", [](enumeration_wrapper e)
+                        {return enumeration<halo_bgsmooth_group_enum,halo_bgsmooth_group_enum_MAX>(halo_bgsmooth_group_enum(e.value)).as_string();},
+                        property_types::target_halo_bgsmooth_group},
 };
 
 property_meta_type const& get_meta(mapnik::keys key)

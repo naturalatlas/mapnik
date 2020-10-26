@@ -165,12 +165,13 @@ void halo_bgsmooth_acc_candidates(
     FT_Bitmap *bitmap,
     int x,
     int y,
-    std::vector<color> &halo_color_candidates,
+    std::vector<color> & halo_color_candidates,
     std::uint8_t halo_bgsmooth_min_luma,
     std::uint8_t halo_bgsmooth_max_luma)
 {
     int x_max = x + bitmap->width;
     int y_max = y + bitmap->rows;
+    halo_color_candidates.reserve(halo_color_candidates.size() + x_max * y_max);
     color src_color = color(0,0,0);
     std::uint8_t src_color_luma = 0;
     for (int i = x, p = 0; i < x_max; ++i, ++p)

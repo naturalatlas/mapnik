@@ -134,17 +134,6 @@ enum text_transform_enum : std::uint8_t
 
 DEFINE_ENUM(text_transform_e, text_transform_enum);
 
-enum halo_bgsmooth_group_enum : std::uint8_t
-{
-    HALO_BGSMOOTH_GROUP_NONE = 0,
-    HALO_BGSMOOTH_GROUP_CHARACTER,
-    HALO_BGSMOOTH_GROUP_WORD,
-    HALO_BGSMOOTH_GROUP_LINE,
-    HALO_BGSMOOTH_GROUP_ALL,
-    halo_bgsmooth_group_enum_MAX
-};
-
-DEFINE_ENUM(halo_bgsmooth_group_e, halo_bgsmooth_group_enum);
 
 enum label_placement_enum : std::uint8_t
 {
@@ -251,6 +240,18 @@ enum smooth_algorithm_enum : std::uint8_t
 };
 
 DEFINE_ENUM (smooth_algorithm_e, smooth_algorithm_enum );
+
+enum halo_bgsmooth_group_enum : std::uint8_t
+{
+    HALO_BGSMOOTH_GROUP_NONE = 0,
+    HALO_BGSMOOTH_GROUP_CHARACTER,
+    HALO_BGSMOOTH_GROUP_WORD,
+    HALO_BGSMOOTH_GROUP_LINE,
+    HALO_BGSMOOTH_GROUP_ALL,
+    halo_bgsmooth_group_enum_MAX
+};
+
+DEFINE_ENUM(halo_bgsmooth_group_e, halo_bgsmooth_group_enum);
 
 }
 
