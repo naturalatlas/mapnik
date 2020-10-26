@@ -62,6 +62,11 @@ struct evaluated_format_properties
     color fill;
     color halo_fill;
     double halo_radius;
+    value_bool halo_bgsmooth;
+    color halo_bgsmooth_min;
+    color halo_bgsmooth_max;
+    double halo_bgsmooth_outlier_lotrim;
+    double halo_bgsmooth_outlier_hitrim;
     font_feature_settings ff_settings;
 };
 
@@ -123,6 +128,11 @@ struct MAPNIK_DECL format_properties
     symbolizer_base::value_type fill;
     symbolizer_base::value_type halo_fill;
     symbolizer_base::value_type halo_radius;
+    symbolizer_base::value_type halo_bgsmooth;
+    symbolizer_base::value_type halo_bgsmooth_min;
+    symbolizer_base::value_type halo_bgsmooth_max;
+    symbolizer_base::value_type halo_bgsmooth_outlier_lotrim;
+    symbolizer_base::value_type halo_bgsmooth_outlier_hitrim;
     symbolizer_base::value_type text_transform;
     symbolizer_base::value_type ff_settings;
 };
