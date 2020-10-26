@@ -181,11 +181,11 @@ void composite_bitmap_bgsmooth(
         for (int j = y, q = 0; j < y_max; ++j, ++q)
         {
             unsigned gray=bitmap->buffer[q*bitmap->width+p];
-            if (gray)
+            if (gray && mapnik::check_bounds(pixmap, i, j))
             {
                 src_color = mapnik::get_pixel<color>(pixmap, i, j);
                 src_color_luma = src_color.luma();
-                if (src_color_luma >= halo_bgsmooth_min_luma && src_color_luma <= halo_bgsmooth_max_luma) {
+                if (src_color.alpha() > 0 && src_color_luma >= halo_bgsmooth_min_luma && src_color_luma <= halo_bgsmooth_max_luma) {
                     halo_color_candidates.push_back(src_color);
                 }
             }
