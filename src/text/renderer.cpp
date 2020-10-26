@@ -158,20 +158,44 @@ bool compare_luma(color c1, color c2)
 }
 
 
+void halo_bgsmooth_vacuum_candidates(
+    std::list<color> & halo_color_candidates,
+    size_t candidate_count_target,
+    double halo_bgsmooth_outlier_lotrim,
+    double halo_bgsmooth_outlier_hitrim)
+{
+    halo_color_candidates.sort(compare_luma);
+    size_t trim_size = halo_color_candidates.size() - candidate_count_target;
+    if (trim_size <= 0) return;
+    size_t trim_begin_size = halo_bgsmooth_outlier_lotrim * trim_size;
+    size_t trim_end_size = std::min(trim_size - trim_begin_size, (size_t)(halo_bgsmooth_outlier_hitrim * trim_size));
+    for (size_t i = 0; i < trim_begin_size; ++i)
+    {
+        halo_color_candidates.pop_front();
+    }
+    for (size_t i = 0; i < trim_end_size; ++i)
+    {
+        halo_color_candidates.pop_back();
+    }
+}
 
 template <typename T>
-void halo_bgsmooth_acc_candidates(
+void halo_bgsmooth_acc_candidates_with_outlier_trimming(
     T & pixmap,
     FT_Bitmap *bitmap,
     int x,
     int y,
-    std::vector<color> & halo_color_candidates,
+    std::list<color> & halo_color_candidates,
     std::uint8_t halo_bgsmooth_min_luma,
-    std::uint8_t halo_bgsmooth_max_luma)
+    std::uint8_t halo_bgsmooth_max_luma,
+    double halo_bgsmooth_outlier_lotrim,
+    double halo_bgsmooth_outlier_hitrim)
 {
+    size_t candidate_count_target = 512;
+    size_t candidate_count_vacuum_threshold = 4096;
+
     int x_max = x + bitmap->width;
     int y_max = y + bitmap->rows;
-    halo_color_candidates.reserve(halo_color_candidates.size() + x_max * y_max);
     color src_color = color(0,0,0);
     std::uint8_t src_color_luma = 0;
     for (int i = x, p = 0; i < x_max; ++i, ++p)
@@ -183,18 +207,76 @@ void halo_bgsmooth_acc_candidates(
             {
                 src_color = mapnik::get_pixel<color>(pixmap, i, j);
                 src_color_luma = src_color.luma();
-                if (src_color.alpha() > 0 && src_color_luma >= halo_bgsmooth_min_luma && src_color_luma <= halo_bgsmooth_max_luma)
+                if (src_color.alpha() > 0
+                  && src_color_luma >= halo_bgsmooth_min_luma
+                  && src_color_luma <= halo_bgsmooth_max_luma)
                 {
                     halo_color_candidates.push_back(src_color);
+
+                    if (halo_color_candidates.size() > candidate_count_vacuum_threshold)
+                    {
+                        halo_bgsmooth_vacuum_candidates(
+                            halo_color_candidates,
+                            candidate_count_target,
+                            halo_bgsmooth_outlier_lotrim,
+                            halo_bgsmooth_outlier_hitrim);
+                    }
                 }
             }
         }
     }
 }
+template <typename T>
+void halo_bgsmooth_acc_candidates(
+    T & pixmap,
+    FT_Bitmap *bitmap,
+    int x,
+    int y,
+    std::list<color> & halo_color_candidates,
+    std::uint8_t halo_bgsmooth_min_luma,
+    std::uint8_t halo_bgsmooth_max_luma)
+{
+    int r_acc = 0;
+    int g_acc = 0;
+    int b_acc = 0;
+    int acc_count = 0;
+
+    int x_max = x + bitmap->width;
+    int y_max = y + bitmap->rows;
+    color src_color = color(0,0,0);
+    std::uint8_t src_color_luma = 0;
+    for (int i = x, p = 0; i < x_max; ++i, ++p)
+    {
+        for (int j = y, q = 0; j < y_max; ++j, ++q)
+        {
+            unsigned gray=bitmap->buffer[q*bitmap->width+p];
+            if (gray && mapnik::check_bounds(pixmap, i, j))
+            {
+                src_color = mapnik::get_pixel<color>(pixmap, i, j);
+                src_color_luma = src_color.luma();
+                if (src_color.alpha() > 0
+                  && src_color_luma >= halo_bgsmooth_min_luma
+                  && src_color_luma <= halo_bgsmooth_max_luma)
+                {
+                    r_acc += src_color.red();
+                    g_acc += src_color.green();
+                    b_acc += src_color.blue();
+                    ++acc_count;
+                }
+            }
+        }
+    }
+    if (!acc_count) return;
+    halo_color_candidates.push_back(color(
+        (std::uint8_t)(r_acc / acc_count),
+        (std::uint8_t)(g_acc / acc_count),
+        (std::uint8_t)(b_acc / acc_count)
+    ));
+}
 
 unsigned halo_bgsmooth_compute_color(
     unsigned default_rgba,
-    std::vector<color> & halo_color_candidates,
+    std::list<color> & halo_color_candidates,
     double halo_bgsmooth_outlier_lotrim,
     double halo_bgsmooth_outlier_hitrim)
 {
@@ -204,7 +286,7 @@ unsigned halo_bgsmooth_compute_color(
         int i_end = halo_color_candidates_count;
         // toss out x% on each end
         if (halo_bgsmooth_outlier_hitrim > 0 || halo_bgsmooth_outlier_lotrim > 0) {
-            sort(halo_color_candidates.begin(), halo_color_candidates.end(), compare_luma);
+            halo_color_candidates.sort(compare_luma);
             i_start = std::min(halo_color_candidates_count - 1, (int)(halo_color_candidates_count * halo_bgsmooth_outlier_lotrim));
             i_end = std::max(0, halo_color_candidates_count - (int)(halo_color_candidates_count * halo_bgsmooth_outlier_hitrim));
             if (i_start > i_end) {
@@ -220,11 +302,16 @@ unsigned halo_bgsmooth_compute_color(
         int g_acc = 0;
         int b_acc = 0;
         int acc_count = i_end - i_start;
-        for (int i = i_start; i < i_end; ++i) {
-            r_acc += halo_color_candidates[i].red();
-            g_acc += halo_color_candidates[i].green();
-            b_acc += halo_color_candidates[i].blue();
+        int i = 0;
+        for (auto const& halo_color_candidate : halo_color_candidates) {
+            if (i < i_start) { i++; continue; }
+            if (i >= i_end) break;
+            r_acc += halo_color_candidate.red();
+            g_acc += halo_color_candidate.green();
+            b_acc += halo_color_candidate.blue();
+            i++;
         }
+        if (!i) return default_rgba;
         return color(
             (std::uint8_t)(r_acc / acc_count),
             (std::uint8_t)(g_acc / acc_count),
@@ -287,7 +374,7 @@ void agg_text_renderer<T>::render(glyph_positions const& pos)
     std::vector<FT_BitmapGlyph> pending_halo_glyph_bitmaps;
     std::vector<unsigned> pending_halo_glyph_rgbas;
     std::vector<glyph_t> pending_halo_glyphs;
-    std::vector<color> halo_color_candidates;
+    std::list<color> halo_color_candidates;
     std::vector<glyph_position>::const_iterator posptr = pos.begin();
 
     for (auto const& glyph : glyphs_)
@@ -320,14 +407,28 @@ void agg_text_renderer<T>::render(glyph_positions const& pos)
                   if (bit->bitmap.pixel_mode != FT_PIXEL_MODE_BGRA)
                   {
                       if (glyph.properties.halo_bgsmooth) {
-                          halo_bgsmooth_acc_candidates(
-                              pixmap_,
-                              &bit->bitmap,
-                              bit->left,
-                              height - bit->top,
-                              halo_color_candidates,
-                              glyph.properties.halo_bgsmooth_min.luma(),
-                              glyph.properties.halo_bgsmooth_max.luma());
+                          if (glyph.properties.halo_bgsmooth_outlier_lotrim > 0 || glyph.properties.halo_bgsmooth_outlier_hitrim > 0)
+                          {
+                              halo_bgsmooth_acc_candidates_with_outlier_trimming(
+                                  pixmap_,
+                                  &bit->bitmap,
+                                  bit->left,
+                                  height - bit->top,
+                                  halo_color_candidates,
+                                  glyph.properties.halo_bgsmooth_min.luma(),
+                                  glyph.properties.halo_bgsmooth_max.luma(),
+                                  glyph.properties.halo_bgsmooth_outlier_lotrim,
+                                  glyph.properties.halo_bgsmooth_outlier_hitrim);
+                          } else {
+                              halo_bgsmooth_acc_candidates(
+                                  pixmap_,
+                                  &bit->bitmap,
+                                  bit->left,
+                                  height - bit->top,
+                                  halo_color_candidates,
+                                  glyph.properties.halo_bgsmooth_min.luma(),
+                                  glyph.properties.halo_bgsmooth_max.luma());
+                          }
 
                           if (halo_bgsmooth_group == HALO_BGSMOOTH_GROUP_CHARACTER || halo_bgsmooth_group == HALO_BGSMOOTH_GROUP_NONE) {
                               unsigned final_character_color = halo_bgsmooth_compute_color(
