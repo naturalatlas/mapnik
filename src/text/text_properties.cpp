@@ -288,6 +288,11 @@ format_properties::format_properties()
       fill(color(0,0,0)),
       halo_fill(color(255,255,255)),
       halo_radius(0.0),
+      halo_bgsmooth(false),
+      halo_bgsmooth_min(color(0,0,0)),
+      halo_bgsmooth_max(color(255,255,255)),
+      halo_bgsmooth_outlier_lotrim(0.0),
+      halo_bgsmooth_outlier_hitrim(0.0),
       text_transform(enumeration_wrapper(NONE)),
       ff_settings() {}
 
@@ -309,6 +314,11 @@ void format_properties::from_xml(xml_node const& node, fontset_map const& fontse
     set_property_from_xml<double>(halo_opacity, "halo-opacity", node);
     set_property_from_xml<color>(fill, "fill", node);
     set_property_from_xml<color>(halo_fill, "halo-fill", node);
+    set_property_from_xml<value_bool>(halo_bgsmooth, "halo-bgsmooth", node);
+    set_property_from_xml<color>(halo_bgsmooth_min, "halo-bgsmooth-min", node);
+    set_property_from_xml<color>(halo_bgsmooth_max, "halo-bgsmooth-max", node);
+    set_property_from_xml<double>(halo_bgsmooth_outlier_lotrim, "halo-bgsmooth-outlier-lotrim", node);
+    set_property_from_xml<double>(halo_bgsmooth_outlier_hitrim, "halo-bgsmooth-outlier-hitrim", node);
     set_property_from_xml<text_transform_e>(text_transform,"text-transform", node);
     set_property_from_xml<font_feature_settings>(ff_settings, "font-feature-settings", node);
 
@@ -364,6 +374,12 @@ void format_properties::to_xml(boost::property_tree::ptree & node, bool explicit
     if (!(halo_opacity == dfl.halo_opacity) || explicit_defaults) serialize_property("halo-opacity", halo_opacity, node);
     if (!(fill == dfl.fill) || explicit_defaults) serialize_property("fill", fill, node);
     if (!(halo_fill == dfl.halo_fill) || explicit_defaults) serialize_property("halo-fill", halo_fill, node);
+    if (!(halo_bgsmooth == dfl.halo_bgsmooth) || explicit_defaults) serialize_property("halo-bgsmooth", halo_bgsmooth, node);
+    if (!(halo_bgsmooth_min == dfl.halo_bgsmooth_min) || explicit_defaults) serialize_property("halo-bgsmooth-min", halo_bgsmooth_min, node);
+    if (!(halo_bgsmooth_max == dfl.halo_bgsmooth_max) || explicit_defaults) serialize_property("halo-bgsmooth-max", halo_bgsmooth_max, node);
+    if (!(halo_bgsmooth_outlier_lotrim == dfl.halo_bgsmooth_outlier_lotrim) || explicit_defaults) serialize_property("halo-bgsmooth-outlier-lotrim", halo_bgsmooth_outlier_lotrim, node);
+    if (!(halo_bgsmooth_outlier_hitrim == dfl.halo_bgsmooth_outlier_hitrim) || explicit_defaults) serialize_property("halo-bgsmooth-outlier-hitrim", halo_bgsmooth_outlier_hitrim, node);
+
     if (!(text_transform == dfl.text_transform) || explicit_defaults) serialize_property("text-transform", text_transform, node);
     if (!(ff_settings == dfl.ff_settings) || explicit_defaults) serialize_property("font-feature-settings", ff_settings, node);
 }
@@ -378,6 +394,11 @@ void format_properties::add_expressions(expression_set & output) const
     if (is_expression(halo_opacity)) output.insert(util::get<expression_ptr>(halo_opacity));
     if (is_expression(fill)) output.insert(util::get<expression_ptr>(fill));
     if (is_expression(halo_fill)) output.insert(util::get<expression_ptr>(halo_fill));
+    if (is_expression(halo_bgsmooth)) output.insert(util::get<expression_ptr>(halo_bgsmooth));
+    if (is_expression(halo_bgsmooth_min)) output.insert(util::get<expression_ptr>(halo_bgsmooth_min));
+    if (is_expression(halo_bgsmooth_max)) output.insert(util::get<expression_ptr>(halo_bgsmooth_max));
+    if (is_expression(halo_bgsmooth_outlier_lotrim)) output.insert(util::get<expression_ptr>(halo_bgsmooth_outlier_lotrim));
+    if (is_expression(halo_bgsmooth_outlier_hitrim)) output.insert(util::get<expression_ptr>(halo_bgsmooth_outlier_hitrim));
     if (is_expression(text_transform)) output.insert(util::get<expression_ptr>(text_transform));
     if (is_expression(ff_settings)) output.insert(util::get<expression_ptr>(ff_settings));
 }

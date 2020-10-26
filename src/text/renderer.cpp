@@ -152,6 +152,93 @@ void composite_bitmap(T & pixmap, FT_Bitmap *bitmap, unsigned rgba, int x, int y
     }
 }
 
+bool compare_luma(color c1, color c2)
+{
+    return c1.luma() < c2.luma();
+}
+
+template <typename T>
+void composite_bitmap_bgsmooth(
+  T & pixmap, FT_Bitmap *bitmap,
+  unsigned rgba,
+  int x,
+  int y,
+  double opacity,
+  composite_mode_e comp_op,
+  std::uint8_t halo_bgsmooth_min_luma,
+  std::uint8_t halo_bgsmooth_max_luma,
+  double halo_bgsmooth_outlier_lotrim,
+  double halo_bgsmooth_outlier_hitrim)
+{
+    int x_max = x + bitmap->width;
+    int y_max = y + bitmap->rows;
+    // accumulate candidate colors
+    color src_color = color(0,0,0);
+    std::uint8_t src_color_luma = 0;
+    std::vector<color> halo_color_candidates;
+    for (int i = x, p = 0; i < x_max; ++i, ++p)
+    {
+        for (int j = y, q = 0; j < y_max; ++j, ++q)
+        {
+            unsigned gray=bitmap->buffer[q*bitmap->width+p];
+            if (gray)
+            {
+                src_color = mapnik::get_pixel<color>(pixmap, i, j);
+                src_color_luma = src_color.luma();
+                if (src_color_luma >= halo_bgsmooth_min_luma && src_color_luma <= halo_bgsmooth_max_luma) {
+                    halo_color_candidates.push_back(src_color);
+                }
+            }
+        }
+    }
+    // calculate target color (override `rgba` parameter)
+    int halo_color_candidates_count = halo_color_candidates.size();
+    if (halo_color_candidates_count > 0) {
+        int i_start = 0;
+        int i_end = halo_color_candidates_count;
+        // toss out x% on each end
+        if (halo_bgsmooth_outlier_hitrim > 0 || halo_bgsmooth_outlier_lotrim > 0) {
+          sort(halo_color_candidates.begin(), halo_color_candidates.end(), compare_luma);
+          i_start = std::min(halo_color_candidates_count - 1, (int)(halo_color_candidates_count * halo_bgsmooth_outlier_lotrim));
+          i_end = std::max(0, halo_color_candidates_count - (int)(halo_color_candidates_count * halo_bgsmooth_outlier_hitrim));
+          if (i_start > i_end) {
+            i_start = i_end = (i_start + i_end) / 2;
+          }
+          if (i_start == i_end) {
+            i_start = std::max(0, i_start - 1);
+            i_end = i_start + 1;
+          }
+        }
+
+        int r_acc = 0;
+        int g_acc = 0;
+        int b_acc = 0;
+        int acc_count = i_end - i_start;
+        for (int i = i_start; i < i_end; ++i) {
+            r_acc += halo_color_candidates[i].red();
+            g_acc += halo_color_candidates[i].green();
+            b_acc += halo_color_candidates[i].blue();
+        }
+        rgba = color(
+          (std::uint8_t)(r_acc / acc_count),
+          (std::uint8_t)(g_acc / acc_count),
+          (std::uint8_t)(b_acc / acc_count)
+        ).rgba();
+    }
+    // composite the pixel
+    for (int i = x, p = 0; i < x_max; ++i, ++p)
+    {
+        for (int j = y, q = 0; j < y_max; ++j, ++q)
+        {
+            unsigned gray=bitmap->buffer[q*bitmap->width+p];
+            if (gray)
+            {
+                mapnik::composite_pixel(pixmap, comp_op, i, j, rgba, gray, opacity);
+            }
+        }
+    }
+}
+
 template <typename T>
 agg_text_renderer<T>::agg_text_renderer (pixmap_type & pixmap,
                                          halo_rasterizer_e rasterizer,
@@ -193,8 +280,11 @@ void agg_text_renderer<T>::render(glyph_positions const& pos)
     matrix.yx = transform_.shy * 0x10000L;
 
     // default formatting
+    value_bool halo_bgsmooth = false;
     double halo_radius = 0;
     color black(0,0,0);
+    std::uint8_t halo_bgsmooth_min_luma = 0;
+    std::uint8_t halo_bgsmooth_max_luma = 255;
     unsigned fill = black.rgba();
     unsigned halo_fill = black.rgba();
     double text_opacity = 1.0;
@@ -202,6 +292,7 @@ void agg_text_renderer<T>::render(glyph_positions const& pos)
 
     for (auto const& glyph : glyphs_)
     {
+        halo_bgsmooth = glyph.properties.halo_bgsmooth;
         halo_fill = glyph.properties.halo_fill.rgba();
         halo_opacity = glyph.properties.halo_opacity;
         halo_radius = glyph.properties.halo_radius * scale_factor_;
@@ -222,13 +313,29 @@ void agg_text_renderer<T>::render(glyph_positions const& pos)
                     FT_BitmapGlyph bit = reinterpret_cast<FT_BitmapGlyph>(g);
                     if (bit->bitmap.pixel_mode != FT_PIXEL_MODE_BGRA)
                     {
-                        composite_bitmap(pixmap_,
-                                         &bit->bitmap,
-                                         halo_fill,
-                                         bit->left,
-                                         height - bit->top,
-                                         halo_opacity,
-                                         halo_comp_op_);
+                        if (halo_bgsmooth) {
+                            halo_bgsmooth_min_luma = glyph.properties.halo_bgsmooth_min.luma();
+                            halo_bgsmooth_max_luma = glyph.properties.halo_bgsmooth_max.luma();
+                            composite_bitmap_bgsmooth(pixmap_,
+                                             &bit->bitmap,
+                                             halo_fill,
+                                             bit->left,
+                                             height - bit->top,
+                                             halo_opacity,
+                                             halo_comp_op_,
+                                             halo_bgsmooth_min_luma,
+                                             halo_bgsmooth_max_luma,
+                                             glyph.properties.halo_bgsmooth_outlier_lotrim,
+                                             glyph.properties.halo_bgsmooth_outlier_hitrim);
+                        } else {
+                            composite_bitmap(pixmap_,
+                                             &bit->bitmap,
+                                             halo_fill,
+                                             bit->left,
+                                             height - bit->top,
+                                             halo_opacity,
+                                             halo_comp_op_);
+                        }
                     }
                 }
             }

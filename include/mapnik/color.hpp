@@ -124,6 +124,12 @@ public:
         return blue_;
     }
 
+    inline std::uint8_t luma() const
+    {
+        // https://www.w3.org/TR/AERT/#color-contrast
+        return 0.299 * (double)red_ + 0.587 * (double)green_ + 0.114 * (double)blue_;
+    }
+
     inline std::uint8_t alpha() const
     {
         return alpha_;

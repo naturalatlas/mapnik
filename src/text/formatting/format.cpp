@@ -53,6 +53,11 @@ void format_node::to_xml(ptree & xml) const
     if (fill) serialize_property("fill", *fill, new_node);
     if (halo_fill) serialize_property("halo-fill", *halo_fill, new_node);
     if (halo_radius) serialize_property("halo-radius", *halo_radius, new_node);
+    if (halo_bgsmooth) serialize_property("halo-bgsmooth", *halo_bgsmooth, new_node);
+    if (halo_bgsmooth_min) serialize_property("halo-bgsmooth-min", *halo_bgsmooth_min, new_node);
+    if (halo_bgsmooth_max) serialize_property("halo-bgsmooth-max", *halo_bgsmooth_max, new_node);
+    if (halo_bgsmooth_outlier_lotrim) serialize_property("halo-bgsmooth-lotrim", *halo_bgsmooth_outlier_lotrim, new_node);
+    if (halo_bgsmooth_outlier_hitrim) serialize_property("halo-bgsmooth-hitrim", *halo_bgsmooth_outlier_hitrim, new_node);
     if (text_transform) serialize_property("text-transform", *text_transform, new_node);
     if (ff_settings) serialize_property("font-feature-settings", *ff_settings, new_node);
 
@@ -75,6 +80,11 @@ node_ptr format_node::from_xml(xml_node const& xml, fontset_map const& fontsets)
     set_property_from_xml<double>(n->text_opacity, "opacity", xml);
     //set_property_from_xml<double>(n->halo_opacity, "halo-opacity", xml); FIXME
     set_property_from_xml<double>(n->halo_radius, "halo-radius", xml);
+    set_property_from_xml<bool>(n->halo_bgsmooth, "halo-bgsmooth", xml);
+    set_property_from_xml<color>(n->halo_bgsmooth_min, "halo-bgsmooth-min", xml);
+    set_property_from_xml<color>(n->halo_bgsmooth_max, "halo-bgsmooth-max", xml);
+    set_property_from_xml<double>(n->halo_bgsmooth_outlier_lotrim, "halo-bgsmooth-outlier-lotrim", xml);
+    set_property_from_xml<double>(n->halo_bgsmooth_outlier_hitrim, "halo-bgsmooth-outlier-hitrim", xml);
     set_property_from_xml<color>(n->fill, "fill", xml);
     set_property_from_xml<color>(n->halo_fill, "halo-fill", xml);
     set_property_from_xml<text_transform_e>(n->text_transform, "text-transform", xml);
@@ -115,6 +125,11 @@ void format_node::apply(evaluated_format_properties_ptr const& p, feature_impl c
     if (line_spacing) new_properties->line_spacing = util::apply_visitor(extract_value<value_double>(feature,attrs), *line_spacing);
     if (text_opacity) new_properties->text_opacity = util::apply_visitor(extract_value<value_double>(feature,attrs), *text_opacity);
     if (halo_radius) new_properties->halo_radius = util::apply_visitor(extract_value<value_double>(feature,attrs), *halo_radius);
+    if (halo_bgsmooth) new_properties->halo_bgsmooth = util::apply_visitor(extract_value<value_bool>(feature,attrs), *halo_bgsmooth);
+    if (halo_bgsmooth_min) new_properties->halo_bgsmooth_min = util::apply_visitor(extract_value<color>(feature,attrs), *halo_bgsmooth_min);
+    if (halo_bgsmooth_min) new_properties->halo_bgsmooth_max = util::apply_visitor(extract_value<color>(feature,attrs), *halo_bgsmooth_max);
+    if (halo_bgsmooth_outlier_lotrim) new_properties->halo_bgsmooth_outlier_lotrim = util::apply_visitor(extract_value<value_double>(feature,attrs), *halo_bgsmooth_outlier_lotrim);
+    if (halo_bgsmooth_outlier_hitrim) new_properties->halo_bgsmooth_outlier_hitrim = util::apply_visitor(extract_value<value_double>(feature,attrs), *halo_bgsmooth_outlier_hitrim);
     if (fill) new_properties->fill = util::apply_visitor(extract_value<color>(feature,attrs), *fill);
     if (halo_fill) new_properties->halo_fill = util::apply_visitor(extract_value<color>(feature,attrs), *halo_fill);
     if (text_transform) new_properties->text_transform = util::apply_visitor(extract_value<text_transform_enum>(feature,attrs), *text_transform);
@@ -155,6 +170,11 @@ void format_node::add_expressions(expression_set & output) const
     if (character_spacing && is_expression(*character_spacing)) output.insert(util::get<expression_ptr>(*character_spacing));
     if (line_spacing && is_expression(*line_spacing)) output.insert(util::get<expression_ptr>(*line_spacing));
     if (halo_radius && is_expression(*halo_radius)) output.insert(util::get<expression_ptr>(*halo_radius));
+    if (halo_bgsmooth && is_expression(*halo_bgsmooth)) output.insert(util::get<expression_ptr>(*halo_bgsmooth));
+    if (halo_bgsmooth_min && is_expression(*halo_bgsmooth_min)) output.insert(util::get<expression_ptr>(*halo_bgsmooth_min));
+    if (halo_bgsmooth_max && is_expression(*halo_bgsmooth_max)) output.insert(util::get<expression_ptr>(*halo_bgsmooth_max));
+    if (halo_bgsmooth_outlier_lotrim && is_expression(*halo_bgsmooth_outlier_lotrim)) output.insert(util::get<expression_ptr>(*halo_bgsmooth_outlier_lotrim));
+    if (halo_bgsmooth_outlier_hitrim && is_expression(*halo_bgsmooth_outlier_hitrim)) output.insert(util::get<expression_ptr>(*halo_bgsmooth_outlier_hitrim));
     if (text_opacity && is_expression(*text_opacity)) output.insert(util::get<expression_ptr>(*text_opacity));
     //if (halo_opacity && is_expression(*halo_opacity)) output.insert(util::get<expression_ptr>(*halo_opacity));
     if (wrap_before && is_expression(*wrap_before)) output.insert(util::get<expression_ptr>(*wrap_before));
