@@ -143,6 +143,7 @@ text_layout::text_layout(face_manager_freetype & font_manager,
             format_->halo_bgsmooth_max = util::apply_visitor(extract_value<color>(feature,attrs), format_defaults.halo_bgsmooth_max);
             format_->halo_bgsmooth_outlier_lotrim = util::apply_visitor(extract_value<double>(feature,attrs), format_defaults.halo_bgsmooth_outlier_lotrim);
             format_->halo_bgsmooth_outlier_hitrim = util::apply_visitor(extract_value<double>(feature,attrs), format_defaults.halo_bgsmooth_outlier_hitrim);
+            format_->halo_bgsmooth_group = util::apply_visitor(extract_value<halo_bgsmooth_group_enum>(feature,attrs), format_defaults.halo_bgsmooth_group);
             format_->text_transform = util::apply_visitor(extract_value<text_transform_enum>(feature,attrs), format_defaults.text_transform);
             format_->face_name = format_defaults.face_name;
             format_->fontset = format_defaults.fontset;

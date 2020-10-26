@@ -95,6 +95,7 @@ enum class keys : std::uint8_t
     ff_settings,
     extend,
     line_pattern,
+    halo_bgsmooth_group,
     MAX_SYMBOLIZER_KEY
 };
 

@@ -157,25 +157,22 @@ bool compare_luma(color c1, color c2)
     return c1.luma() < c2.luma();
 }
 
+
+
 template <typename T>
-void composite_bitmap_bgsmooth(
-  T & pixmap, FT_Bitmap *bitmap,
-  unsigned rgba,
-  int x,
-  int y,
-  double opacity,
-  composite_mode_e comp_op,
-  std::uint8_t halo_bgsmooth_min_luma,
-  std::uint8_t halo_bgsmooth_max_luma,
-  double halo_bgsmooth_outlier_lotrim,
-  double halo_bgsmooth_outlier_hitrim)
+void halo_bgsmooth_acc_candidates(
+    T & pixmap,
+    FT_Bitmap *bitmap,
+    int x,
+    int y,
+    std::vector<color> &halo_color_candidates,
+    std::uint8_t halo_bgsmooth_min_luma,
+    std::uint8_t halo_bgsmooth_max_luma)
 {
     int x_max = x + bitmap->width;
     int y_max = y + bitmap->rows;
-    // accumulate candidate colors
     color src_color = color(0,0,0);
     std::uint8_t src_color_luma = 0;
-    std::vector<color> halo_color_candidates;
     for (int i = x, p = 0; i < x_max; ++i, ++p)
     {
         for (int j = y, q = 0; j < y_max; ++j, ++q)
@@ -185,29 +182,37 @@ void composite_bitmap_bgsmooth(
             {
                 src_color = mapnik::get_pixel<color>(pixmap, i, j);
                 src_color_luma = src_color.luma();
-                if (src_color.alpha() > 0 && src_color_luma >= halo_bgsmooth_min_luma && src_color_luma <= halo_bgsmooth_max_luma) {
+                if (src_color.alpha() > 0 && src_color_luma >= halo_bgsmooth_min_luma && src_color_luma <= halo_bgsmooth_max_luma)
+                {
                     halo_color_candidates.push_back(src_color);
                 }
             }
         }
     }
-    // calculate target color (override `rgba` parameter)
+}
+
+unsigned halo_bgsmooth_compute_color(
+    unsigned default_rgba,
+    std::vector<color> & halo_color_candidates,
+    double halo_bgsmooth_outlier_lotrim,
+    double halo_bgsmooth_outlier_hitrim)
+{
     int halo_color_candidates_count = halo_color_candidates.size();
     if (halo_color_candidates_count > 0) {
         int i_start = 0;
         int i_end = halo_color_candidates_count;
         // toss out x% on each end
         if (halo_bgsmooth_outlier_hitrim > 0 || halo_bgsmooth_outlier_lotrim > 0) {
-          sort(halo_color_candidates.begin(), halo_color_candidates.end(), compare_luma);
-          i_start = std::min(halo_color_candidates_count - 1, (int)(halo_color_candidates_count * halo_bgsmooth_outlier_lotrim));
-          i_end = std::max(0, halo_color_candidates_count - (int)(halo_color_candidates_count * halo_bgsmooth_outlier_hitrim));
-          if (i_start > i_end) {
-            i_start = i_end = (i_start + i_end) / 2;
-          }
-          if (i_start == i_end) {
-            i_start = std::max(0, i_start - 1);
-            i_end = i_start + 1;
-          }
+            sort(halo_color_candidates.begin(), halo_color_candidates.end(), compare_luma);
+            i_start = std::min(halo_color_candidates_count - 1, (int)(halo_color_candidates_count * halo_bgsmooth_outlier_lotrim));
+            i_end = std::max(0, halo_color_candidates_count - (int)(halo_color_candidates_count * halo_bgsmooth_outlier_hitrim));
+            if (i_start > i_end) {
+                i_start = i_end = (i_start + i_end) / 2;
+            }
+            if (i_start == i_end) {
+                i_start = std::max(0, i_start - 1);
+                i_end = i_start + 1;
+            }
         }
 
         int r_acc = 0;
@@ -219,24 +224,13 @@ void composite_bitmap_bgsmooth(
             g_acc += halo_color_candidates[i].green();
             b_acc += halo_color_candidates[i].blue();
         }
-        rgba = color(
-          (std::uint8_t)(r_acc / acc_count),
-          (std::uint8_t)(g_acc / acc_count),
-          (std::uint8_t)(b_acc / acc_count)
+        return color(
+            (std::uint8_t)(r_acc / acc_count),
+            (std::uint8_t)(g_acc / acc_count),
+            (std::uint8_t)(b_acc / acc_count)
         ).rgba();
     }
-    // composite the pixel
-    for (int i = x, p = 0; i < x_max; ++i, ++p)
-    {
-        for (int j = y, q = 0; j < y_max; ++j, ++q)
-        {
-            unsigned gray=bitmap->buffer[q*bitmap->width+p];
-            if (gray)
-            {
-                mapnik::composite_pixel(pixmap, comp_op, i, j, rgba, gray, opacity);
-            }
-        }
-    }
+    return default_rgba;
 }
 
 template <typename T>
@@ -253,6 +247,7 @@ template <typename T>
 void agg_text_renderer<T>::render(glyph_positions const& pos)
 {
     prepare_glyphs(pos);
+
     FT_Error  error;
     FT_Vector start;
     FT_Vector start_halo;
@@ -280,72 +275,90 @@ void agg_text_renderer<T>::render(glyph_positions const& pos)
     matrix.yx = transform_.shy * 0x10000L;
 
     // default formatting
-    value_bool halo_bgsmooth = false;
     double halo_radius = 0;
     color black(0,0,0);
-    std::uint8_t halo_bgsmooth_min_luma = 0;
-    std::uint8_t halo_bgsmooth_max_luma = 255;
     unsigned fill = black.rgba();
     unsigned halo_fill = black.rgba();
     double text_opacity = 1.0;
     double halo_opacity = 1.0;
+    halo_bgsmooth_group_e halo_bgsmooth_group = HALO_BGSMOOTH_GROUP_CHARACTER;
+
+    std::vector<FT_BitmapGlyph> pending_halo_glyph_bitmaps;
+    std::vector<unsigned> pending_halo_glyph_rgbas;
+    std::vector<glyph_t> pending_halo_glyphs;
+    std::vector<color> halo_color_candidates;
+    std::vector<glyph_position>::const_iterator posptr = pos.begin();
 
     for (auto const& glyph : glyphs_)
     {
-        halo_bgsmooth = glyph.properties.halo_bgsmooth;
+        glyph_info const& glyph_info_ = (*posptr++).glyph;
+
+        bool did_buffer_glyph = false;
         halo_fill = glyph.properties.halo_fill.rgba();
         halo_opacity = glyph.properties.halo_opacity;
         halo_radius = glyph.properties.halo_radius * scale_factor_;
+        halo_bgsmooth_group = glyph.properties.halo_bgsmooth_group;
+
         // make sure we've got reasonable values.
         if (halo_radius <= 0.0 || halo_radius > 1024.0) continue;
+
         FT_Glyph g;
         error = FT_Glyph_Copy(glyph.image, &g);
         if (!error)
         {
-            FT_Glyph_Transform(g, &halo_matrix, &start_halo);
-            if (rasterizer_ == HALO_RASTERIZER_FULL)
+          FT_Glyph_Transform(g, &halo_matrix, &start_halo);
+
+          if (rasterizer_ == HALO_RASTERIZER_FULL)
+          {
+              stroker_->init(halo_radius);
+              FT_Glyph_Stroke(&g, stroker_->get(), 1);
+              error = FT_Glyph_To_Bitmap(&g, FT_RENDER_MODE_NORMAL, 0, 1);
+              if (!error)
+              {
+                  FT_BitmapGlyph bit = reinterpret_cast<FT_BitmapGlyph>(g);
+                  if (bit->bitmap.pixel_mode != FT_PIXEL_MODE_BGRA)
+                  {
+                      if (glyph.properties.halo_bgsmooth) {
+                          halo_bgsmooth_acc_candidates(
+                              pixmap_,
+                              &bit->bitmap,
+                              bit->left,
+                              height - bit->top,
+                              halo_color_candidates,
+                              glyph.properties.halo_bgsmooth_min.luma(),
+                              glyph.properties.halo_bgsmooth_max.luma());
+
+                          if (halo_bgsmooth_group == HALO_BGSMOOTH_GROUP_CHARACTER || halo_bgsmooth_group == HALO_BGSMOOTH_GROUP_NONE) {
+                              unsigned final_character_color = halo_bgsmooth_compute_color(
+                                  halo_fill,
+                                  halo_color_candidates,
+                                  glyph.properties.halo_bgsmooth_outlier_lotrim,
+                                  glyph.properties.halo_bgsmooth_outlier_hitrim);
+                              pending_halo_glyph_rgbas.push_back(final_character_color);
+                              halo_color_candidates.clear();
+                          }
+
+                          pending_halo_glyph_bitmaps.push_back(bit);
+                          pending_halo_glyphs.push_back(glyph);
+                          did_buffer_glyph = true;
+                      } else {
+                          composite_bitmap(pixmap_,
+                                           &bit->bitmap,
+                                           halo_fill,
+                                           bit->left,
+                                           height - bit->top,
+                                           halo_opacity,
+                                           halo_comp_op_);
+                      }
+                  }
+              }
+          }
+        }
+        else
+        {
+            error = FT_Glyph_To_Bitmap(&g, FT_RENDER_MODE_NORMAL, 0, 1);
+            if (!error)
             {
-                stroker_->init(halo_radius);
-                FT_Glyph_Stroke(&g, stroker_->get(), 1);
-                error = FT_Glyph_To_Bitmap(&g, FT_RENDER_MODE_NORMAL, 0, 1);
-                if (!error)
-                {
-                    FT_BitmapGlyph bit = reinterpret_cast<FT_BitmapGlyph>(g);
-                    if (bit->bitmap.pixel_mode != FT_PIXEL_MODE_BGRA)
-                    {
-                        if (halo_bgsmooth) {
-                            halo_bgsmooth_min_luma = glyph.properties.halo_bgsmooth_min.luma();
-                            halo_bgsmooth_max_luma = glyph.properties.halo_bgsmooth_max.luma();
-                            composite_bitmap_bgsmooth(pixmap_,
-                                             &bit->bitmap,
-                                             halo_fill,
-                                             bit->left,
-                                             height - bit->top,
-                                             halo_opacity,
-                                             halo_comp_op_,
-                                             halo_bgsmooth_min_luma,
-                                             halo_bgsmooth_max_luma,
-                                             glyph.properties.halo_bgsmooth_outlier_lotrim,
-                                             glyph.properties.halo_bgsmooth_outlier_hitrim);
-                        } else {
-                            composite_bitmap(pixmap_,
-                                             &bit->bitmap,
-                                             halo_fill,
-                                             bit->left,
-                                             height - bit->top,
-                                             halo_opacity,
-                                             halo_comp_op_);
-                        }
-                    }
-                }
-            }
-            else
-            {
-                error = FT_Glyph_To_Bitmap(&g, FT_RENDER_MODE_NORMAL, 0, 1);
-                if (error)
-                {
-                    continue;
-                }
                 FT_BitmapGlyph bit = reinterpret_cast<FT_BitmapGlyph>(g);
                 if (bit->bitmap.pixel_mode == FT_PIXEL_MODE_BGRA)
                 {
@@ -378,7 +391,69 @@ void agg_text_renderer<T>::render(glyph_positions const& pos)
                 }
             }
         }
-        FT_Done_Glyph(g);
+
+        if (did_buffer_glyph) {
+            if (halo_bgsmooth_group == HALO_BGSMOOTH_GROUP_WORD) {
+              unsigned glyph_index__space = FT_Get_Char_Index(glyph_info_.face->get_face(), 32);
+              unsigned glyph_index__newline = FT_Get_Char_Index(glyph_info_.face->get_face(), 10);
+              unsigned glyph_index__nbsp = FT_Get_Char_Index(glyph_info_.face->get_face(), 0x00A0);
+              if (glyph_info_.glyph_index == glyph_index__space /* SPACE */ || glyph_info_.glyph_index == glyph_index__nbsp /* NBSP */ || glyph_info_.glyph_index == glyph_index__newline /* NEW_LINE */) {
+                    unsigned word_color = halo_bgsmooth_compute_color(
+                        halo_fill,
+                        halo_color_candidates,
+                        glyph.properties.halo_bgsmooth_outlier_lotrim,
+                        glyph.properties.halo_bgsmooth_outlier_hitrim);
+                    while (pending_halo_glyph_rgbas.size() < pending_halo_glyph_bitmaps.size()) {
+                        pending_halo_glyph_rgbas.push_back(word_color);
+                    }
+                    halo_color_candidates.clear();
+                }
+            } else if (halo_bgsmooth_group == HALO_BGSMOOTH_GROUP_LINE) {
+                unsigned glyph_index__newline = FT_Get_Char_Index(glyph_info_.face->get_face(), 10);
+                if (glyph_info_.glyph_index == glyph_index__newline /* NEW_LINE */) {
+                    unsigned line_color = halo_bgsmooth_compute_color(
+                        halo_fill,
+                        halo_color_candidates,
+                        glyph.properties.halo_bgsmooth_outlier_lotrim,
+                        glyph.properties.halo_bgsmooth_outlier_hitrim);
+                    while (pending_halo_glyph_rgbas.size() < pending_halo_glyph_bitmaps.size()) {
+                        pending_halo_glyph_rgbas.push_back(line_color);
+                    }
+                    halo_color_candidates.clear();
+                }
+            }
+        }
+
+        if (!did_buffer_glyph) FT_Done_Glyph(g);
+    }
+
+    // fill pending halo colors
+    if (pending_halo_glyph_rgbas.size() < pending_halo_glyph_bitmaps.size()) {
+      glyph_t last_glyph = glyphs_[glyphs_.size() - 1];
+      unsigned final_color = halo_bgsmooth_compute_color(
+          halo_fill,
+          halo_color_candidates,
+          last_glyph.properties.halo_bgsmooth_outlier_lotrim,
+          last_glyph.properties.halo_bgsmooth_outlier_hitrim);
+      while (pending_halo_glyph_rgbas.size() < pending_halo_glyph_bitmaps.size()) {
+          pending_halo_glyph_rgbas.push_back(final_color);
+      }
+    }
+
+    // render buffered halos
+    for (int i = 0, n = pending_halo_glyph_bitmaps.size(); i < n; ++i) {
+        FT_BitmapGlyph bit = pending_halo_glyph_bitmaps[i];
+        glyph_t glyph = pending_halo_glyphs[i];
+        unsigned halo_fill = pending_halo_glyph_rgbas[i];
+        composite_bitmap(pixmap_,
+                         &bit->bitmap,
+                         halo_fill,
+                         bit->left,
+                         height - bit->top,
+                         glyph.properties.halo_opacity,
+                         halo_comp_op_);
+
+        FT_Done_Glyph(reinterpret_cast<FT_Glyph>(bit));
     }
 
     // render actual text

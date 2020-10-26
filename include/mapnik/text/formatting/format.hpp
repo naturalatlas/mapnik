@@ -64,6 +64,7 @@ public:
     boost::optional<symbolizer_base::value_type> halo_bgsmooth_max;
     boost::optional<symbolizer_base::value_type> halo_bgsmooth_outlier_lotrim;
     boost::optional<symbolizer_base::value_type> halo_bgsmooth_outlier_hitrim;
+    boost::optional<symbolizer_base::value_type> halo_bgsmooth_group;
     boost::optional<symbolizer_base::value_type> ff_settings;
 
 private:

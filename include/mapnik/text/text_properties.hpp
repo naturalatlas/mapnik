@@ -67,6 +67,7 @@ struct evaluated_format_properties
     color halo_bgsmooth_max;
     double halo_bgsmooth_outlier_lotrim;
     double halo_bgsmooth_outlier_hitrim;
+    halo_bgsmooth_group_e halo_bgsmooth_group;
     font_feature_settings ff_settings;
 };
 
@@ -134,6 +135,7 @@ struct MAPNIK_DECL format_properties
     symbolizer_base::value_type halo_bgsmooth_max;
     symbolizer_base::value_type halo_bgsmooth_outlier_lotrim;
     symbolizer_base::value_type halo_bgsmooth_outlier_hitrim;
+    symbolizer_base::value_type halo_bgsmooth_group;
     symbolizer_base::value_type text_transform;
     symbolizer_base::value_type ff_settings;
 };

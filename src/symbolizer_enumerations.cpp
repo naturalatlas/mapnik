@@ -223,4 +223,15 @@ static const char * smooth_algorithm_strings[] = {
 
 IMPLEMENT_ENUM( smooth_algorithm_e, smooth_algorithm_strings )
 
+static const char * halo_bgsmooth_group_strings[] = {
+    "none",
+    "character",
+    "word",
+    "line",
+    "all",
+    ""
+};
+
+IMPLEMENT_ENUM( halo_bgsmooth_group_e, halo_bgsmooth_group_strings )
+
 } // namespace mapnik

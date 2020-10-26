@@ -117,6 +117,9 @@ static const property_meta_type key_meta[const_max_key] =
                             return enumeration<halo_rasterizer_enum,halo_rasterizer_enum_MAX>(halo_rasterizer_enum(e.value)).as_string();
                         },
                         property_types::target_halo_rasterizer },
+    property_meta_type{ "halo-bgsmooth-group", [](enumeration_wrapper e)
+                        {return enumeration<halo_bgsmooth_group_enum,halo_bgsmooth_group_enum_MAX>(halo_bgsmooth_group_enum(e.value)).as_string();},
+                        property_types::target_halo_bgsmooth_group},
     property_meta_type{ "text-placements", nullptr, property_types::target_double },
     property_meta_type{ "placement",
                         [](enumeration_wrapper e)
