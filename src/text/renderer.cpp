@@ -281,44 +281,45 @@ unsigned halo_bgsmooth_compute_color(
     double halo_bgsmooth_outlier_hitrim)
 {
     int halo_color_candidates_count = halo_color_candidates.size();
-    if (halo_color_candidates_count > 0) {
-        int i_start = 0;
-        int i_end = halo_color_candidates_count;
-        // toss out x% on each end
-        if (halo_bgsmooth_outlier_hitrim > 0 || halo_bgsmooth_outlier_lotrim > 0) {
-            halo_color_candidates.sort(compare_luma);
-            i_start = std::min(halo_color_candidates_count - 1, (int)(halo_color_candidates_count * halo_bgsmooth_outlier_lotrim));
-            i_end = std::max(0, halo_color_candidates_count - (int)(halo_color_candidates_count * halo_bgsmooth_outlier_hitrim));
-            if (i_start > i_end) {
-                i_start = i_end = (i_start + i_end) / 2;
-            }
-            if (i_start == i_end) {
-                i_start = std::max(0, i_start - 1);
-                i_end = i_start + 1;
-            }
-        }
+    if (!halo_color_candidates_count) return default_rgba;
 
-        int r_acc = 0;
-        int g_acc = 0;
-        int b_acc = 0;
-        int acc_count = i_end - i_start;
-        int i = 0;
-        for (auto const& halo_color_candidate : halo_color_candidates) {
-            if (i < i_start) { i++; continue; }
-            if (i >= i_end) break;
-            r_acc += halo_color_candidate.red();
-            g_acc += halo_color_candidate.green();
-            b_acc += halo_color_candidate.blue();
-            i++;
+    int i_start = 0;
+    int i_end = halo_color_candidates_count;
+    // toss out x% on each end
+    if (halo_bgsmooth_outlier_hitrim > 0 || halo_bgsmooth_outlier_lotrim > 0) {
+        halo_color_candidates.sort(compare_luma);
+        i_start = std::min(halo_color_candidates_count - 1, (int)(halo_color_candidates_count * halo_bgsmooth_outlier_lotrim));
+        i_end = std::max(0, halo_color_candidates_count - (int)(halo_color_candidates_count * halo_bgsmooth_outlier_hitrim));
+        if (i_start > i_end) {
+            i_start = i_end = (i_start + i_end) / 2;
         }
-        if (!i) return default_rgba;
-        return color(
-            (std::uint8_t)(r_acc / acc_count),
-            (std::uint8_t)(g_acc / acc_count),
-            (std::uint8_t)(b_acc / acc_count)
-        ).rgba();
+        if (i_start == i_end) {
+            i_start = std::max(0, i_start - 1);
+            i_end = i_start + 1;
+        }
     }
-    return default_rgba;
+
+    // average colors
+    int r_acc = 0;
+    int g_acc = 0;
+    int b_acc = 0;
+    int acc_count = i_end - i_start;
+    int i = 0;
+    for (auto const& halo_color_candidate : halo_color_candidates) {
+        if (i < i_start) { i++; continue; }
+        if (i >= i_end) break;
+        r_acc += halo_color_candidate.red();
+        g_acc += halo_color_candidate.green();
+        b_acc += halo_color_candidate.blue();
+        i++;
+    }
+
+    if (!acc_count) return default_rgba;
+    return color(
+        (std::uint8_t)(r_acc / acc_count),
+        (std::uint8_t)(g_acc / acc_count),
+        (std::uint8_t)(b_acc / acc_count)
+    ).rgba();
 }
 
 template <typename T>
